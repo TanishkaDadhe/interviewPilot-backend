@@ -20,7 +20,7 @@ from models.interview import (
     SubmitAnswerRequest, SubmitAnswerResponse,
     CompleteSessionRequest, CompleteSessionResponse,
     SessionSummaryResponse, AnswerRecord,
-    InterviewSessionDocument,
+    InterviewSessionDocument, SessionDetailResponse,
 )
 from agents.profile_agent import build_profile_summary
 from agents.question_agent import generate_questions
@@ -44,6 +44,37 @@ async def start_session(
     # --- AI Call 1: Analyze candidate profile ---
     try:
         profile_summary = build_profile_summary(current_user)
+
+        # Save extracted profile data into user document
+        db.users.update_one(
+            {"_id": current_user["_id"]},
+            {
+                "$set": {
+                    "target_role":
+                        profile_summary.get(
+                            "target_role"
+                        ),
+
+                    "skills":
+                        profile_summary.get(
+                            "skills",
+                            []
+                        ),
+
+                    "education":
+                        profile_summary.get(
+                            "education"
+                        ),
+
+                    "experience":
+                        profile_summary.get(
+                            "experience",
+                            []
+                        ),
+                }
+            }
+        )
+
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -241,7 +272,13 @@ async def complete_session(
         f"Verdict: {coaching.get('overall_verdict', '?')}\n\n"
         f"Top strength: {coaching.get('top_strength', '')}\n\n"
         f"Critical improvement: {coaching.get('critical_improvement', '')}\n\n"
-        f"Study plan:\n" + "\n".join(f"- {s}" for s in coaching.get("study_plan", [])) +
+        f"Growth roadmap:\n" + "\n".join(
+            f"- {s}"
+            for s in coaching.get(
+                "roadmap",
+                []
+            )
+        ) +
         f"\n\nNext steps: {coaching.get('next_steps', '')}"
     )
 
@@ -249,26 +286,175 @@ async def complete_session(
         {"_id": oid},
         {"$set": {
             "answers": [a.model_dump() for a in final_answers],
+
             "overall_feedback": overall_feedback,
+
             "average_score": avg_score,
-            "hire_confidence": coaching.get("hire_confidence"),
-            "overall_verdict": coaching.get("overall_verdict"),
+
+            "hire_confidence":
+                coaching.get("hire_confidence"),
+
+            "overall_verdict":
+                coaching.get("overall_verdict"),
+
+            "top_strength":
+                coaching.get("top_strength"),
+
+            "critical_improvement":
+                coaching.get(
+                    "critical_improvement"
+                ),
+
+            "job_fit_score":
+                coaching.get(
+                    "job_fit_score"
+                ),
+
+            "roadmap":
+                coaching.get(
+                    "roadmap",
+                    []
+                ),
+
+            "per_question":
+                coaching.get(
+                    "per_question",
+                    []
+                ),
+
             "status": "completed",
-            "completed_at": datetime.utcnow(),
+
+            "completed_at":
+                datetime.utcnow(),
         }}
     )
 
     return CompleteSessionResponse(
         session_id=body.session_id,
+
         average_score=avg_score,
+
         overall_feedback=overall_feedback,
-        hire_confidence=coaching.get("hire_confidence"),
-        overall_verdict=coaching.get("overall_verdict"),
+
+        hire_confidence=
+            coaching.get(
+                "hire_confidence"
+            ),
+
+        overall_verdict=
+            coaching.get(
+                "overall_verdict"
+            ),
+
+        top_strength=
+            coaching.get(
+                "top_strength"
+            ),
+
+        critical_improvement=
+            coaching.get(
+                "critical_improvement"
+            ),
+
+        job_fit_score=
+            coaching.get(
+                "job_fit_score"
+            ),
+
+        roadmap=
+            coaching.get(
+                "roadmap",
+                []
+            ),
+
+        per_question=
+            coaching.get(
+                "per_question",
+                []
+            ),
+
         answers=final_answers,
     )
 
+# ── 6. History — pure DB read ──────────────────────────────────────────────────
 
-# ── 4. Summary — pure DB read ──────────────────────────────────────────────────
+@router.get("/history")
+async def get_history(current_user: dict = Depends(get_current_user)):
+    db = get_db()
+    cursor = db.sessions.find(
+        {
+            "user_id": str(current_user["_id"]),
+            "status": "completed"
+        },
+        {
+            "questions": 0,
+            "answers": 0,
+            "profile_summary": 0,
+        },
+    ).sort("completed_at", -1).limit(20)
+
+    sessions = []
+    for s in cursor:
+        sessions.append({
+            "session_id": str(s["_id"]),
+            "interview_type": s["interview_type"],
+            "difficulty": s["difficulty"],
+            "status": s["status"],
+            "average_score": s.get("average_score"),
+            "hire_confidence": s.get("hire_confidence"),
+            "overall_verdict": s.get("overall_verdict"),
+            "started_at": s.get("started_at"),
+            "completed_at": s.get("completed_at"),
+        })
+    return sessions    
+
+
+
+# ── 4. get session id Qs ──────────────────────────────────────────────────
+@router.get(
+    "/{session_id}",
+    response_model=SessionDetailResponse,
+)
+async def get_session(
+    session_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    try:
+        oid = ObjectId(session_id)
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid session_id",
+        )
+
+    db = get_db()
+
+    session = db.sessions.find_one({
+        "_id": oid,
+        "user_id": str(current_user["_id"]),
+    })
+
+    if not session:
+        raise HTTPException(
+            status_code=404,
+            detail="Session not found",
+        )
+
+    return SessionDetailResponse(
+        session_id=str(session["_id"]),
+        interview_type=session["interview_type"],
+        difficulty=session["difficulty"],
+        focus_area=session.get("focus_area"),
+
+        questions=session["questions"],
+
+        current_index=session["current_index"],
+
+        status=session["status"],
+    )
+
+
+# ── 5. Summary — pure DB read ──────────────────────────────────────────────────
 
 @router.get("/{session_id}/summary", response_model=SessionSummaryResponse)
 async def get_summary(
@@ -300,30 +486,35 @@ async def get_summary(
         answers=[AnswerRecord(**a) for a in answers],
         overall_feedback=session.get("overall_feedback"),
         completed_at=session.get("completed_at"),
-    )
+        hire_confidence=session.get(
+            "hire_confidence"
+        ),
+
+        overall_verdict=session.get(
+            "overall_verdict"
+        ),
+
+        top_strength=session.get(
+            "top_strength"
+        ),
+
+        critical_improvement=session.get(
+            "critical_improvement"
+        ),
+
+        job_fit_score=session.get(
+            "job_fit_score"
+        ),
+
+        roadmap=session.get(
+            "roadmap",
+            []
+        ),
+
+        per_question=session.get(
+            "per_question",
+            []
+        ),
+            )
 
 
-# ── 5. History — pure DB read ──────────────────────────────────────────────────
-
-@router.get("/history")
-async def get_history(current_user: dict = Depends(get_current_user)):
-    db = get_db()
-    cursor = db.sessions.find(
-        {"user_id": str(current_user["_id"])},
-        {"questions": 0, "answers": 0, "profile_summary": 0},
-    ).sort("started_at", -1).limit(20)
-
-    sessions = []
-    for s in cursor:
-        sessions.append({
-            "session_id": str(s["_id"]),
-            "interview_type": s["interview_type"],
-            "difficulty": s["difficulty"],
-            "status": s["status"],
-            "average_score": s.get("average_score"),
-            "hire_confidence": s.get("hire_confidence"),
-            "overall_verdict": s.get("overall_verdict"),
-            "started_at": s.get("started_at"),
-            "completed_at": s.get("completed_at"),
-        })
-    return sessions

@@ -128,6 +128,26 @@ Return ONLY valid JSON.
 {{
   "summary": "3 sentence professional summary",
 
+  "target_role": "Frontend Developer",
+
+  "skills": [
+    "React",
+    "JavaScript",
+    "Tailwind CSS"
+  ],
+
+  "education":
+    "B.E Computer Engineering",
+
+  "experience": [
+    {
+      "role": "Frontend Intern",
+      "company": "XYZ",
+      "duration": "6 months",
+      "description": "Worked on React applications"
+    }
+  ],
+
   "seniority_level": "junior|mid|senior|lead",
 
   "job_fit_score": 0,
@@ -210,6 +230,28 @@ No code block.
     except Exception:
         return {
             "summary": "",
+            "target_role":
+                user_data.get(
+                    "target_role"
+                ),
+
+            "skills":
+                user_data.get(
+                    "skills",
+                    []
+                ),
+
+            "education":
+                user_data.get(
+                    "education"
+                ),
+
+            "experience":
+                user_data.get(
+                    "experience",
+                    []
+                ),
+
             "seniority_level": "mid",
             "job_fit_score": 50,
             "role_match_explanation": "",

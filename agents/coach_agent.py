@@ -34,7 +34,7 @@ def coach_all_answers(
             top_strength,
             critical_improvement,
             per_question,
-            study_plan,
+            roadmap,
             next_steps
         }
     """
@@ -174,6 +174,8 @@ Return ONLY valid JSON.
   "hire_confidence":
     0,
 
+  "job_fit_score": 0,
+
   "top_strength":
     "single strongest demonstrated skill",
 
@@ -194,11 +196,13 @@ Return ONLY valid JSON.
         "specific structure advice",
 
       "example_talking_point":
-        "something important they missed"
+        "something important they missed",
+
+      "ideal_answer_framework": "A concise example of how the candidate should have answered this question"
     }}
   ],
 
-  "study_plan": [
+  "roadmap": [
     "topic 1",
     "topic 2",
     "topic 3"
@@ -241,6 +245,8 @@ No explanation.
             "hire_confidence":
                 50,
 
+            "job_fit_score": job_fit_score,
+
             "top_strength":
                 "",
 
@@ -261,12 +267,14 @@ No explanation.
                         "",
 
                     "example_talking_point":
-                        ""
+                        "",
+
+                    "ideal_answer_framework": ""
                 }
                 for i in range(len(qa_evaluations))
             ],
 
-            "study_plan": [],
+            "roadmap": [],
 
             "next_steps":
                 "Practice another mock interview."
@@ -290,11 +298,53 @@ No explanation.
                     "",
 
                 "example_talking_point":
+                    "",
+
+                "ideal_answer_framework":
                     ""
             }
         )
 
     coaching["per_question"] = coaching["per_question"][:len(qa_evaluations)]
+    coaching.setdefault(
+        "job_fit_score",
+        job_fit_score
+    )
+
+    coaching.setdefault(
+        "roadmap",
+        []
+    )
+
+    coaching.setdefault(
+        "top_strength",
+        ""
+    )
+
+    coaching.setdefault(
+        "critical_improvement",
+        ""
+    )
+
+    coaching.setdefault(
+        "hire_confidence",
+        50
+    )
+
+    coaching.setdefault(
+        "overall_verdict",
+        "lean_no_hire"
+    )
+
+    coaching.setdefault(
+        "overall_feedback",
+        "No feedback available."
+    )
+
+    coaching.setdefault(
+        "next_steps",
+        ""
+    )
 
     return coaching
 
