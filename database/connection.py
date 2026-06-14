@@ -7,6 +7,9 @@ db = None
 
 def connect_db():
     global client, db
+    print("MONGODB_URI =", MONGODB_URI)
+
+
     try:
         client = MongoClient(MONGODB_URI)
         # Test the connection
