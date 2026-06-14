@@ -11,7 +11,7 @@ router = APIRouter()
 
 # ── Routes ────────────────────────────────────────────────────────────────────
 
-@router.get("/")
+@router.get("")
 async def get_profile(current_user: dict = Depends(get_current_user)):
     """Return full profile for the logged-in user."""
     return {
@@ -27,7 +27,7 @@ async def get_profile(current_user: dict = Depends(get_current_user)):
     }
 
 
-@router.put("/")
+@router.put("")
 async def update_profile(
     body: ProfileUpdateRequest,
     current_user: dict = Depends(get_current_user),
