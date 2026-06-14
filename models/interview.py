@@ -6,10 +6,12 @@ from datetime import datetime
 class AnswerRecord(BaseModel):
     question: str
     answer: str
-    score: Optional[int] = None
-    evaluation: Optional[str] = None
-    coaching: Optional[str] = None
+    score: Optional[float] = None
+    verdict: Optional[str] = None
+    what_was_good: Optional[str] = None      # ← new
+    what_was_missing: Optional[str] = None   # ← new
     answered_at: datetime = Field(default_factory=datetime.utcnow)
+    # Remove: evaluation, coaching (these were blobs)
 
 
 class StartSessionRequest(BaseModel):

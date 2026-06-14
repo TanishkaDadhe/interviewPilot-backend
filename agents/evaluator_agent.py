@@ -7,13 +7,7 @@ Called ONCE after the final answer is submitted.
 """
 
 import json
-import google.generativeai as genai
-
-from config import GEMINI_API_KEY
-
-genai.configure(api_key=GEMINI_API_KEY)
-
-model = genai.GenerativeModel("gemini-2.5-flash")
+from utils.gemini_helper import generate_gemini
 
 
 def evaluate_all_answers(
@@ -72,7 +66,7 @@ A{i}: {qa['answer']}
 """
 
     prompt = f"""
-You are a senior interviewer evaluating a completed interview.
+You are an experienced interviewer reviewing a completed interview.
 
 ========================
 ROLE CONTEXT
@@ -135,6 +129,20 @@ Weak. Significant gaps.
 Poor. Incorrect or largely irrelevant.
 
 ========================
+LANGUAGE STYLE
+========================
+
+Write all feedback in plain, simple English.
+
+Rules:
+- Write like you are talking to the candidate directly and kindly.
+- Use short sentences. One idea at a time.
+- Avoid corporate jargon, buzzwords, or overly formal phrases.
+- Be honest but encouraging. Not harsh.
+- Bad example: "The candidate demonstrated an inadequate articulation of fundamental constructs."
+- Good example: "You touched on the basics, but didn't go deep enough into how it actually works in practice."
+
+========================
 RETURN FORMAT
 ========================
 
@@ -158,11 +166,11 @@ Only JSON.
 """.strip()
     
     print("=== EVALUATOR START ===")
-    response = model.generate_content(prompt)
+    text = generate_gemini(prompt)
     print("=== EVALUATOR DONE ===")
 
     text = (
-        response.text.strip()
+        text.strip()
         .replace("```json", "")
         .replace("```", "")
         .strip()

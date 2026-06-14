@@ -8,13 +8,7 @@ Called ONCE after evaluation completes.
 """
 
 import json
-import google.generativeai as genai
-
-from config import GEMINI_API_KEY
-
-genai.configure(api_key=GEMINI_API_KEY)
-
-model = genai.GenerativeModel("gemini-2.5-flash")
+from utils.gemini_helper import generate_gemini
 
 
 def coach_all_answers(
@@ -34,8 +28,7 @@ def coach_all_answers(
             top_strength,
             critical_improvement,
             per_question,
-            roadmap,
-            next_steps
+            roadmap
         }
     """
 
@@ -99,9 +92,9 @@ What was missing:
 """
 
     prompt = f"""
-You are a world-class interview coach.
+You are a friendly and honest interview coach helping a candidate improve.
 
-You have reviewed a completed mock interview.
+You have just reviewed their mock interview. Now write a coaching report.
 
 ========================
 ROLE CONTEXT
@@ -135,28 +128,32 @@ FULL INTERVIEW TRANSCRIPT
 {transcript.strip()}
 
 ========================
+LANGUAGE STYLE — VERY IMPORTANT
+========================
+
+Write everything in simple, clear, everyday English.
+
+Rules:
+- Imagine you are talking to a friend who just finished a practice interview.
+- Use short sentences. No long paragraphs.
+- Avoid jargon, buzzwords, and complicated words.
+- Be honest, but kind. Not harsh or robotic.
+- Every piece of advice must be specific to what this candidate actually said — not generic.
+- The roadmap steps must be simple, concrete actions anyone can understand and start tomorrow.
+
+Bad roadmap example (too vague and complicated):
+"Enhance your articulation of system design trade-offs by engaging with distributed systems literature."
+
+Good roadmap example (simple and actionable):
+"Practice explaining system design out loud. Pick one topic like caching or load balancing and explain it to yourself or a friend in 2 minutes."
+
+========================
 COACHING RULES
 ========================
 
-Provide coaching that is:
-
-- Specific
-- Actionable
-- Personalized
-- Honest
-
-Do NOT give generic advice.
-
-Every recommendation must reference actual weaknesses
-observed in the candidate's answers.
-
-Focus on:
-
-- Communication
-- Technical depth
-- Missing concepts
-- Interview strategy
-- Seniority expectations
+- Be specific. Reference actual things the candidate said or missed.
+- Every tip must help them do better in a real interview.
+- Focus on: how they communicated, how deep their answers were, what concepts they missed, and what a real interviewer would think.
 
 ========================
 RETURN FORMAT
@@ -166,7 +163,7 @@ Return ONLY valid JSON.
 
 {{
   "overall_feedback":
-    "3-4 sentence summary",
+    "3-4 sentences. Plain summary of how the interview went. Talk about their communication style, answer quality, and main strengths and weaknesses. Keep it simple and direct. Do NOT include hire verdict, scores, or roadmap here.",
 
   "overall_verdict":
     "hire|lean_hire|lean_no_hire|no_hire",
@@ -177,39 +174,35 @@ Return ONLY valid JSON.
   "job_fit_score": 0,
 
   "top_strength":
-    "single strongest demonstrated skill",
+    "One short phrase — their single best skill shown in this interview.",
 
   "critical_improvement":
-    "single most important improvement",
+    "One short phrase — the single most important thing they need to work on.",
 
   "per_question": [
     {{
       "question_index": 1,
 
       "encouragement":
-        "specific compliment",
+        "One or two sentences. Say something specific and genuine they did well.",
 
       "top_tip":
-        "best improvement",
+        "One clear, simple thing they should do differently next time for this type of question.",
 
       "better_answer_structure":
-        "specific structure advice",
+        "In plain English, explain how they should have structured their answer. Keep it short.",
 
       "example_talking_point":
-        "something important they missed",
+        "One specific thing they forgot to mention that would have made their answer much stronger.",
 
-      "ideal_answer_framework": "A concise example of how the candidate should have answered this question"
+      "ideal_answer_framework": "Show a short improved version of the answer — only the parts they missed or should have said better. Do NOT repeat what they already said correctly."
     }}
   ],
 
   "roadmap": [
-    "topic 1",
-    "topic 2",
-    "topic 3"
-  ],
+    "5 steps. Each step is one simple, specific action they can take this week to improve before their next interview. Write like you are texting a friend advice. No bullet formatting inside the string — just plain text."
+  ]
 
-  "next_steps":
-    "exact next actions"
 }}
 
 The per_question array must contain exactly {len(qa_evaluations)} items.
@@ -220,11 +213,11 @@ No explanation.
 """.strip()
     
     print("=== COACH START ===")
-    response = model.generate_content(prompt)
+    text = generate_gemini(prompt)
     print("=== COACH DONE ===")
 
     text = (
-        response.text.strip()
+        text.strip()
         .replace("```json", "")
         .replace("```", "")
         .strip()
@@ -276,8 +269,6 @@ No explanation.
 
             "roadmap": [],
 
-            "next_steps":
-                "Practice another mock interview."
         }
 
     coaching.setdefault("per_question", [])
@@ -341,10 +332,6 @@ No explanation.
         "No feedback available."
     )
 
-    coaching.setdefault(
-        "next_steps",
-        ""
-    )
 
     return coaching
 

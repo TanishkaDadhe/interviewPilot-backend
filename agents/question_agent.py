@@ -17,13 +17,7 @@ Questions are stored in MongoDB and served one by one.
 """
 
 import json
-import google.generativeai as genai
-
-from config import GEMINI_API_KEY
-
-genai.configure(api_key=GEMINI_API_KEY)
-
-model = genai.GenerativeModel("gemini-2.5-flash")
+from utils.gemini_helper import generate_gemini
 
 
 def generate_questions(
@@ -122,7 +116,7 @@ def generate_questions(
     )
 
     prompt = f"""
-You are a senior interviewer at a top technology company.
+You are a friendly but thorough interviewer at a technology company.
 
 Generate realistic interview questions for a:
 
@@ -185,10 +179,10 @@ Generate exactly {num_questions} questions.
 
 Requirements:
 
-1. Questions must sound like a real interviewer.
-2. Validate candidate strengths with deeper follow-up style questions.
-3. Probe weak areas aggressively.
-4. Probe missing skills where relevant.
+1. Write questions in plain, simple English — like a real person talking, not a textbook.
+2. Keep each question short and clear. One idea per question. No jargon unless necessary.
+3. Validate candidate strengths with natural follow-up style questions.
+4. Probe weak areas and missing skills.
 5. Match the candidate's seniority level.
 6. Cover important role-specific topics.
 7. Mix conceptual, practical, situational, and experience-based questions.
@@ -197,6 +191,12 @@ Requirements:
 10. Order questions from easier to harder.
 11. Include at least one question targeting the strongest claimed skill.
 12. Include at least {max(1, num_questions // 3)} questions targeting weak areas or skill gaps.
+
+LANGUAGE STYLE:
+- Use everyday words. Avoid corporate buzzwords.
+- Questions should feel like a friendly but serious conversation.
+- Bad example: "Articulate the architectural trade-offs you navigated when designing distributed systems."
+- Good example: "Can you walk me through a time you had to choose between two different system designs? What made you go with one over the other?"
 
 Return ONLY a JSON array.
 
@@ -213,11 +213,11 @@ No extra text.
 """.strip()
     
     print("=== QUESTION START ===")
-    response = model.generate_content(prompt)
+    text = generate_gemini(prompt)
     print("=== QUESTION DONE ===")
 
     text = (
-        response.text.strip()
+        text.strip()
         .replace("```json", "")
         .replace("```", "")
         .strip()

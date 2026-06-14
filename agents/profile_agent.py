@@ -19,13 +19,7 @@ This prevents repeated profile analysis API calls.
 """
 
 import json
-import google.generativeai as genai
-
-from config import GEMINI_API_KEY
-
-genai.configure(api_key=GEMINI_API_KEY)
-
-model = genai.GenerativeModel("gemini-2.5-flash")
+from utils.gemini_helper import generate_gemini
 
 
 def build_profile_summary(user_data: dict) -> dict:
@@ -140,12 +134,12 @@ Return ONLY valid JSON.
     "B.E Computer Engineering",
 
   "experience": [
-    {
+    {{
       "role": "Frontend Intern",
       "company": "XYZ",
       "duration": "6 months",
       "description": "Worked on React applications"
-    }
+    }}
   ],
 
   "seniority_level": "junior|mid|senior|lead",
@@ -214,11 +208,11 @@ No code block.
 """.strip()
     
     print("=== PROFILE START ===")
-    response = model.generate_content(prompt)
+    text = generate_gemini(prompt)
     print("=== PROFILE DONE ===")
 
     text = (
-        response.text.strip()
+        text.strip()
         .replace("```json", "")
         .replace("```", "")
         .strip()

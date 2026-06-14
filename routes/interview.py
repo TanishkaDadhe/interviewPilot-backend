@@ -219,8 +219,6 @@ async def complete_session(
             "verdict": ev["verdict"],
             "what_was_good": ev["what_was_good"],
             "what_was_missing": ev["what_was_missing"],
-            "ideal_answer_summary": ev["ideal_answer_summary"],
-            "feedback": ev["feedback"],
         })
 
     # --- AI Call 4: Coach on all answers in one prompt ---
@@ -237,24 +235,17 @@ async def complete_session(
     for i, (ans, ev) in enumerate(zip(answers, evaluations)):
         pq = per_q_coaching.get(i, {})
         evaluation_text = (
-            f"Score: {ev['score']}/10 ({ev['verdict']})\n\n"
             f"What was good: {ev['what_was_good']}\n\n"
-            f"What was missing: {ev['what_was_missing']}\n\n"
-            f"Ideal answer: {ev['ideal_answer_summary']}\n\n"
-            f"Feedback: {ev['feedback']}"
+            f"What was missing: {ev['what_was_missing']}"
         )
-        coaching_text = (
-            f"{pq.get('encouragement', '')}\n\n"
-            f"Top tip: {pq.get('top_tip', '')}\n\n"
-            f"Better answer structure: {pq.get('better_answer_structure', '')}\n\n"
-            f"Key talking point you missed: {pq.get('example_talking_point', '')}"
-        )
+        
         final_answers.append(AnswerRecord(
             question=ans["question"],
             answer=ans["answer"],
             score=ev["score"],
-            evaluation=evaluation_text,
-            coaching=coaching_text,
+            verdict=ev["verdict"],
+            what_was_good=ev["what_was_good"],
+            what_was_missing=ev["what_was_missing"],
             answered_at=ans.get("answered_at", datetime.utcnow()),
         ))
 
@@ -266,21 +257,7 @@ async def complete_session(
         if final_answers
         else 0.0
     )
-    overall_feedback = (
-        f"{coaching.get('overall_feedback', '')}\n\n"
-        f"Hire confidence: {coaching.get('hire_confidence', '?')}% | "
-        f"Verdict: {coaching.get('overall_verdict', '?')}\n\n"
-        f"Top strength: {coaching.get('top_strength', '')}\n\n"
-        f"Critical improvement: {coaching.get('critical_improvement', '')}\n\n"
-        f"Growth roadmap:\n" + "\n".join(
-            f"- {s}"
-            for s in coaching.get(
-                "roadmap",
-                []
-            )
-        ) +
-        f"\n\nNext steps: {coaching.get('next_steps', '')}"
-    )
+    overall_feedback = coaching.get('overall_feedback', '')
 
     db.sessions.update_one(
         {"_id": oid},
