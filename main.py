@@ -25,7 +25,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         os.getenv("FRONTEND_URL", "http://localhost:3000"),
-        "https://*.vercel.app",          # allow all Vercel preview URLs
+        "https://interview-pilot-frontend-livid.vercel.app",         
     ],
     allow_credentials=True,
     allow_methods=["*"],
